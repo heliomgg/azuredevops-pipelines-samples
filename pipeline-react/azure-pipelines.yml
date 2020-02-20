@@ -1,0 +1,71 @@
+# Node.js with React
+# Build a Node.js project that uses React.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: CopyFiles@2
+  displayName: 'Copy Terraform files to artifacts'
+  inputs:
+    SourceFolder: 'whs-app/terraform'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)/Terraform'
+
+
+
+- task: NodeTool@0
+  inputs:
+    versionSpec: '10.x'
+  displayName: 'Install Node.js'
+
+- script: npm install -g yarn
+  displayName: 'Install Yarn'
+
+- script: yarn install
+  displayName: Yarn install
+  workingDirectory: 'whs-app'
+
+- script: yarn build:development
+  displayName: 'Build for DEV'
+  workingDirectory: 'whs-app'
+  env: 
+    NODE_ENV: development
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: 'whs-app/build'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)/DEV'
+  displayName: 'Copy files for DEV'
+
+
+- task: DeleteFiles@1
+  inputs:
+    SourceFolder: 'whs-app/build'
+    Contents: '*'
+  displayName: 'Delete build files'
+
+
+- script: yarn build
+  displayName: 'Build for PROD'
+  workingDirectory: 'whs-app'
+  env: 
+    NODE_ENV: production
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: 'whs-app/build'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)/PROD'
+  displayName: 'Copy files for PROD'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
